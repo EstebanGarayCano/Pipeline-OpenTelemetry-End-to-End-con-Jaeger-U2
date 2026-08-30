@@ -24,8 +24,14 @@ exporters:
       insecure: true
   prometheus:
     endpoint: "0.0.0.0:8889"
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+    default_labels_enabled:
+      exporter: false
+      job: true
+      level: true
   debug:
-    verbosity: detailed
+    verbosity: normal
 
 service:
   pipelines:
@@ -39,5 +45,5 @@ service:
       exporters: [prometheus]
     logs:
       receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [debug]
+      processors: [memory_limiter, resource, batch]
+      exporters: [loki, debug]
