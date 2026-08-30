@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-a
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-a
+  template:
+    metadata:
+      labels:
+        app: service-a
+    spec:
+      containers:
+        - name: service-a
+          # Imagen construida localmente por docker compose build
+          image: pipeline-opentelemetry-end-to-end-con-jaeger-u2-service-a:latest
+          imagePullPolicy: Never
+          env:
+            - name: ASPNETCORE_URLS
+              value: http://+:8080
+            - name: SERVICE_B_URL
+              value: http://service-b:8081
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4317
+            - name: OTEL_SERVICE_NAME
+              value: service-a
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-a
+  namespace: observability
+spec:
+  selector:
+    app: service-a
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-a-external
+  namespace: observability
+spec:
+  type: LoadBalancer
+  selector:
+    app: service-a
+  ports:
+    - port: 8080
+      targetPort: 8080

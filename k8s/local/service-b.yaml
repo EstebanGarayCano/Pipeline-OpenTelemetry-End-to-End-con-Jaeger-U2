@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-b
+  namespace: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-b
+  template:
+    metadata:
+      labels:
+        app: service-b
+    spec:
+      containers:
+        - name: service-b
+          # Imagen construida localmente por docker compose build
+          image: pipeline-opentelemetry-end-to-end-con-jaeger-u2-service-b:latest
+          imagePullPolicy: Never
+          env:
+            - name: ASPNETCORE_URLS
+              value: http://+:8081
+            - name: ConnectionStrings__DefaultConnection
+              value: Host=postgres;Database=appdb;Username=postgres;Password=postgres
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector:4317
+            - name: OTEL_SERVICE_NAME
+              value: service-b
+          ports:
+            - containerPort: 8081
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: service-b
+  namespace: observability
+spec:
+  selector:
+    app: service-b
+  ports:
+    - port: 8081
+      targetPort: 8081
