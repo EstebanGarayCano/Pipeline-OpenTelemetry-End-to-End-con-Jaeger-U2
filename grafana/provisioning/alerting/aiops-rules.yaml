@@ -1,0 +1,210 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: aiops-log
+    receivers:
+      - uid: aiops-log-uid
+        type: webhook
+        settings:
+          url: http://localhost:3000/api/health
+        disableResolveMessage: false
+
+policies:
+  - orgId: 1
+    receiver: aiops-log
+
+groups:
+  - orgId: 1
+    name: AIOps - Deteccion de Anomalias
+    folder: Alertas AIOps
+    interval: 30s
+    rules:
+
+      # Regla 1: Latencia P99 alta (estatica)
+      - uid: aiops-latencia-p99
+        title: "AIOps: Alta Latencia P99 (>500ms)"
+        condition: THRESH
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus-uid
+            model:
+              expr: >
+                histogram_quantile(0.99,
+                  sum by(le, job) (
+                    rate(http_server_request_duration_seconds_bucket{job=~"service-.+"}[5m])
+                  )
+                )
+              instant: true
+              refId: A
+          - refId: THRESH
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: THRESH
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0.5]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        labels:
+          severity: warning
+          tipo: latencia
+        annotations:
+          summary: "Latencia P99 > 500ms en {{ $labels.job }}"
+          description: "P99 = {{ $value | printf \"%.3f\" }}s. Revisa trazas en Jaeger."
+
+      # Regla 2: Tasa de errores alta (estatica)
+      - uid: aiops-error-rate
+        title: "AIOps: Tasa de Errores HTTP > 5%"
+        condition: THRESH
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus-uid
+            model:
+              expr: >
+                100 * sum by(job) (
+                  rate(http_server_request_duration_seconds_count{
+                    job=~"service-.+",
+                    http_response_status_code=~"5.."
+                  }[5m])
+                )
+                /
+                sum by(job) (
+                  rate(http_server_request_duration_seconds_count{job=~"service-.+"}[5m])
+                )
+              instant: true
+              refId: A
+          - refId: THRESH
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: THRESH
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [5]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: NoData
+        execErrState: Error
+        for: 1m
+        labels:
+          severity: critical
+          tipo: errores
+        annotations:
+          summary: "Tasa de errores {{ $value | printf \"%.1f\" }}% en {{ $labels.job }}"
+          description: "Error rate supera 5%. Busca trace_id en Loki: {job=\"{{ $labels.job }}\", level=\"Error\"}"
+
+      # Regla 3: Correlacion AIOps (dinamica) - ambas condiciones simultaneas
+      - uid: aiops-correlacion
+        title: "AIOps: Anomalia Correlacionada (Latencia AND Errores)"
+        condition: THRESH
+        data:
+          - refId: LAT
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus-uid
+            model:
+              expr: >
+                histogram_quantile(0.99,
+                  sum by(le) (
+                    rate(http_server_request_duration_seconds_bucket{job=~"service-.+"}[5m])
+                  )
+                )
+              instant: true
+              refId: LAT
+          - refId: ERR
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus-uid
+            model:
+              expr: >
+                100 * sum(
+                  rate(http_server_request_duration_seconds_count{
+                    job=~"service-.+",
+                    http_response_status_code=~"5.."
+                  }[5m])
+                )
+                /
+                sum(
+                  rate(http_server_request_duration_seconds_count{job=~"service-.+"}[5m])
+                )
+              instant: true
+              refId: ERR
+          - refId: MATH
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: math
+              refId: MATH
+              expression: "($LAT > 0.5) * ($ERR > 5)"
+          - refId: THRESH
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: THRESH
+              expression: MATH
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+                  operator:
+                    type: and
+                  query:
+                    params: [MATH]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: NoData
+        execErrState: Error
+        for: 2m
+        labels:
+          severity: critical
+          tipo: correlacion-aiops
+        annotations:
+          summary: "Sistema degradado: latencia alta Y tasa de errores alta"
+          description: "Regla AIOps: error_rate > 5% AND latency_p99 > 500ms. Busca en Loki: job=service-a level=Error"

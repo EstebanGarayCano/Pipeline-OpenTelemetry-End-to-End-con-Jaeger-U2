@@ -1,0 +1,247 @@
+{
+  "id": null,
+  "uid": "security-golden-signals",
+  "title": "Network & Security — Golden Signals",
+  "tags": ["security", "network", "otel", "u3"],
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Intentos Fallidos 4xx (últimos 5m)",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.01 },
+              { "color": "red", "value": 0.1 }
+            ]
+          },
+          "unit": "reqps",
+          "mappings": []
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+        "expr": "sum(rate(http_server_request_duration_seconds_count{job=~\"service-.+\", http_response_status_code=~\"4..\"}[5m]))",
+        "legendFormat": "4xx/s",
+        "refId": "A"
+      }]
+    },
+
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Errores 5xx (últimos 5m)",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.01 },
+              { "color": "red", "value": 0.05 }
+            ]
+          },
+          "unit": "reqps",
+          "mappings": []
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "orientation": "auto", "textMode": "auto", "colorMode": "background" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+        "expr": "sum(rate(http_server_request_duration_seconds_count{job=~\"service-.+\", http_response_status_code=~\"5..\"}[5m]))",
+        "legendFormat": "5xx/s",
+        "refId": "A"
+      }]
+    },
+
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Tráfico N-S — Req/s a service-a",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "blue", "value": null }
+            ]
+          },
+          "unit": "reqps"
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+        "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"service-a\"}[5m]))",
+        "legendFormat": "N-S req/s",
+        "refId": "A"
+      }]
+    },
+
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Tráfico E-W — service-a → service-b",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "purple", "value": null }
+            ]
+          },
+          "unit": "reqps"
+        }
+      },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+        "expr": "sum(rate(http_client_request_duration_seconds_count{job=\"service-a\"}[5m]))",
+        "legendFormat": "E-W req/s",
+        "refId": "A"
+      }]
+    },
+
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Tasa de Errores HTTP por Servicio (4xx y 5xx)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+          "expr": "sum by(job) (rate(http_server_request_duration_seconds_count{job=~\"service-.+\", http_response_status_code=~\"4..\"}[5m]))",
+          "legendFormat": "4xx — {{job}}",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+          "expr": "sum by(job) (rate(http_server_request_duration_seconds_count{job=~\"service-.+\", http_response_status_code=~\"5..\"}[5m]))",
+          "legendFormat": "5xx — {{job}}",
+          "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Tráfico N-S vs E-W (req/s)",
+      "description": "N-S: tráfico externo entrando a service-a. E-W: tráfico interno service-a→service-b.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "table", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+          "expr": "sum(rate(http_server_request_duration_seconds_count{job=\"service-a\"}[5m]))",
+          "legendFormat": "N-S (externo → service-a)",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+          "expr": "sum(rate(http_client_request_duration_seconds_count{job=\"service-a\"}[5m]))",
+          "legendFormat": "E-W (service-a → service-b)",
+          "refId": "B"
+        }
+      ]
+    },
+
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Distribución de Códigos HTTP por Servicio",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps" },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "http_response_status_code" },
+            "properties": [{ "id": "displayName", "value": "Código HTTP" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "job" },
+            "properties": [{ "id": "displayName", "value": "Servicio" }]
+          }
+        ]
+      },
+      "options": { "showHeader": true },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+        "expr": "sum by(job, http_response_status_code) (rate(http_server_request_duration_seconds_count{job=~\"service-.+\"}[5m]))",
+        "legendFormat": "{{job}} — {{http_response_status_code}}",
+        "refId": "A",
+        "instant": true,
+        "format": "table"
+      }]
+    },
+
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Conexiones Activas por Servicio",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": { "mode": "palette-classic" }
+        }
+      },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+        "expr": "http_server_active_requests{job=~\"service-.+\"}",
+        "legendFormat": "{{job}}",
+        "refId": "A"
+      }]
+    }
+
+  ]
+}
