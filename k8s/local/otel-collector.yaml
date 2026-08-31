@@ -73,7 +73,7 @@ spec:
       containers:
         - name: otel-collector
           image: otel/opentelemetry-collector-contrib:0.103.0
-          command: ["--config=/etc/otel/config.yaml"]
+          args: ["--config=/etc/otel/config.yaml"]
           ports:
             - containerPort: 4317
             - containerPort: 4318

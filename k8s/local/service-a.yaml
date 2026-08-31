@@ -16,8 +16,8 @@ spec:
       containers:
         - name: service-a
           # Imagen construida localmente por docker compose build
-          image: pipeline-opentelemetry-end-to-end-con-jaeger-u2-service-a:latest
-          imagePullPolicy: Never
+          image: host.docker.internal:5000/service-a:local
+          imagePullPolicy: Always
           env:
             - name: ASPNETCORE_URLS
               value: http://+:8080

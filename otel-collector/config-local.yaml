@@ -16,6 +16,14 @@ processors:
       - action: insert
         key: deployment.environment
         value: local
+      - action: insert
+        key: service.namespace
+        value: local
+  attributes/loki_hints:
+    actions:
+      - action: insert
+        key: loki.attribute.labels
+        value: "service.name,deployment.environment"
 
 exporters:
   otlp/jaeger:
@@ -27,7 +35,7 @@ exporters:
   loki:
     endpoint: http://loki:3100/loki/api/v1/push
     default_labels_enabled:
-      exporter: false
+      exporter: true
       job: true
       level: true
   debug:
@@ -45,5 +53,5 @@ service:
       exporters: [prometheus]
     logs:
       receivers: [otlp]
-      processors: [memory_limiter, resource, batch]
+      processors: [memory_limiter, resource, attributes/loki_hints, batch]
       exporters: [loki, debug]
