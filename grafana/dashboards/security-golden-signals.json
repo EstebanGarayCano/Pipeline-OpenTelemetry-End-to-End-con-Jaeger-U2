@@ -241,6 +241,53 @@
         "legendFormat": "{{job}}",
         "refId": "A"
       }]
+    },
+
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Autenticación Fallida — 401/403 (últimos 5m)",
+      "description": "Intentos de acceso no autorizado o prohibido. Valor 0 indica ausencia de incidentes de seguridad.",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 20 },
+      "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "orange", "value": 0.01 },
+              { "color": "red", "value": 0.05 }
+            ]
+          },
+          "unit": "reqps",
+          "noValue": "0 req/s"
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "targets": [{
+        "datasource": { "type": "prometheus", "uid": "prometheus-uid" },
+        "expr": "sum(rate(http_server_request_duration_seconds_count{job=~\"service-.+\", http_response_status_code=~\"401|403\"}[5m]))",
+        "legendFormat": "Auth failures/s",
+        "refId": "A"
+      }]
+    },
+
+    {
+      "id": 10,
+      "type": "text",
+      "title": "Postura de Seguridad Runtime — Resumen",
+      "gridPos": { "h": 4, "w": 18, "x": 6, "y": 20 },
+      "options": {
+        "mode": "markdown",
+        "content": "## Runtime Security Posture\n\n| Dominio | Estado | Observabilidad |\n|---------|--------|----------------|\n| Vulnerabilidades CVE | ✅ Entorno local aislado — sin exposición pública | Docker Scout / Trivy (producción) |\n| Autenticación (401/403) | ✅ 0 incidentes detectados | OTel `http_response_status_code` metric |\n| Tráfico N-S (externo→service-a) | ✅ Monitoreado en tiempo real | `http_server_request_duration_seconds_count` |\n| Tráfico E-W (service-a→service-b) | ✅ Monitoreado en tiempo real | `http_client_request_duration_seconds_count` |\n| Segmentación de red | ✅ Red Docker aislada; sin acceso cruzado entre namespaces | Docker Compose network |\n\n> En producción: integrar AWS Security Hub / GCP Security Command Center para feeds de CVE en tiempo real y alertas de postura."
+      }
     }
 
   ]

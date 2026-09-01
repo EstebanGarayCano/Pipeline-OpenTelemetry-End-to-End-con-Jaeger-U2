@@ -1,0 +1,105 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: Security - Deteccion de Incidentes
+    folder: Alertas AIOps
+    interval: 30s
+    rules:
+
+      # Regla: Spike de errores de autenticacion (401/403)
+      - uid: sec-auth-failures
+        title: "Security: Spike de Autenticacion Fallida (401/403)"
+        condition: THRESH
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus-uid
+            model:
+              expr: >
+                sum(rate(http_server_request_duration_seconds_count{
+                  job=~"service-.+",
+                  http_response_status_code=~"401|403"
+                }[5m]))
+              instant: true
+              refId: A
+          - refId: THRESH
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: THRESH
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0.05]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        labels:
+          severity: critical
+          tipo: seguridad
+        annotations:
+          summary: "Spike auth fallida detectado"
+          description: "Posible ataque de fuerza bruta o acceso no autorizado. Busca en Loki: {job=~\"service-.+\", level=\"Warning\"}"
+
+      # Regla: Trafico N-S anormalmente alto (posible DDoS)
+      - uid: sec-ns-traffic-spike
+        title: "Security: Trafico N-S Anormalmente Alto (>10 req/s)"
+        condition: THRESH
+        data:
+          - refId: A
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus-uid
+            model:
+              expr: >
+                sum(rate(http_server_request_duration_seconds_count{job="service-a"}[1m]))
+              instant: true
+              refId: A
+          - refId: THRESH
+            queryType: ""
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: __expr__
+            model:
+              type: threshold
+              refId: THRESH
+              expression: A
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [10]
+                  operator:
+                    type: and
+                  query:
+                    params: [A]
+                  reducer:
+                    type: last
+                    params: []
+        noDataState: OK
+        execErrState: Error
+        for: 1m
+        labels:
+          severity: warning
+          tipo: seguridad-red
+        annotations:
+          summary: "Trafico N-S alto detectado"
+          description: "Trafico entrante supera 10 req/s. Posible DDoS o carga inesperada. Revisa patrones en el dashboard Network & Security."
