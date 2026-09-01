@@ -65,4 +65,14 @@ public class RequestController : ControllerBase
 
     [HttpGet("/health")]
     public IActionResult Health() => Ok(new { status = "healthy", service = "service-a" });
+
+    // Endpoint de prueba para demostrar detección de errores de autenticación en Grafana
+    [HttpGet("/auth-test")]
+    public IActionResult AuthTest([FromQuery] string? token)
+    {
+        _logger.LogWarning("Intento de acceso a recurso protegido sin token válido desde {Path}", HttpContext.Request.Path);
+        if (token == "valid-token")
+            return Ok(new { status = "authorized" });
+        return Unauthorized(new { error = "Token inválido o ausente", service = "service-a" });
+    }
 }
